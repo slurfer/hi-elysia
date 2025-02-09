@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia"
 
-export const userService = new Elysia({ name: "user/service" })
+export const user = new Elysia({ prefix: "/user" })
     .state({
         user: {} as Record<string, string>,
         session: {} as Record<number, string>,
@@ -10,12 +10,16 @@ export const userService = new Elysia({ name: "user/service" })
             username: t.String({ minLength: 1 }),
             password: t.String({ minLength: 8 }),
         }),
-        session: t.Cookie({ token: t.Number() }, { secrets: "seia" }),
+        session: t.Cookie(
+            {
+                token: t.Number(),
+            },
+            {
+                secrets: "seia",
+            },
+        ),
         optionalSession: t.Optional(t.Ref("session")),
     })
-
-export const user = new Elysia({ prefix: "/user" })
-    .use(userService)
     .put(
         "/sign-up",
         async ({ body: { username, password }, store, error }) => {
@@ -24,7 +28,6 @@ export const user = new Elysia({ prefix: "/user" })
                     success: false,
                     message: "User already exists",
                 })
-
             store.user[username] = await Bun.password.hash(password)
 
             return {
@@ -56,40 +59,6 @@ export const user = new Elysia({ prefix: "/user" })
         },
         {
             body: "signIn",
-            cookie: "session",
-        },
-    )
-    .get(
-        "/sign-out",
-        ({ cookie: { token } }) => {
-            token.remove()
-
-            return {
-                success: true,
-                message: "Signed out",
-            }
-        },
-        {
-            cookie: "optionalSession",
-        },
-    )
-    .get(
-        "/profile",
-        ({ cookie: { token }, store: { session }, error }) => {
-            const username = session[token.value]
-
-            if (!username)
-                return error(401, {
-                    success: false,
-                    message: "Unauthorized",
-                })
-
-            return {
-                success: true,
-                username,
-            }
-        },
-        {
             cookie: "session",
         },
     )
