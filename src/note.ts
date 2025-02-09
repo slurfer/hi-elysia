@@ -20,23 +20,23 @@ class Note {
 
 export const note = new Elysia({ prefix: "/note" })
     .decorate("note", new Note())
+    .onTransform(function log({ body, params, path, request: { method } }) {
+        console.log(`${method} ${path}`, { body, params })
+    })
     .get("/", ({ note }) => note.data)
     .put("/", ({ note, body: { data } }) => note.add(data), { body: t.Object({ data: t.String() }) })
-    .get(
-        "/:index",
-        ({ note, params: { index }, error }) => {
-            return note.data[index] ?? error(404, "oh not :(")
-        },
-        { params: t.Object({ index: t.Number() }) },
-    )
-    .delete(
-        "/:index",
-        ({ note, params: { index }, error }) => {
-            if (index in note.data) return note.remove(index)
-            return error(422)
-        },
-        { params: t.Object({ index: t.Number() }) },
-    )
+    .guard({
+        params: t.Object({
+            index: t.Number(),
+        }),
+    })
+    .get("/:index", ({ note, params: { index }, error }) => {
+        return note.data[index] ?? error(404, "oh not :(")
+    })
+    .delete("/:index", ({ note, params: { index }, error }) => {
+        if (index in note.data) return note.remove(index)
+        return error(422)
+    })
     .patch(
         "/:index",
         ({ note, params: { index }, body: { data }, error }) => {
@@ -44,9 +44,6 @@ export const note = new Elysia({ prefix: "/note" })
             return error(422)
         },
         {
-            params: t.Object({
-                index: t.Number(),
-            }),
             body: t.Object({ data: t.String() }),
         },
     )
